@@ -1122,7 +1122,7 @@ def configure_node(o):
   if options.experimental_quic:
     if options.shared_openssl:
       raise Exception('QUIC requires modified version of OpenSSL and cannot be'
-                      ' enabled with --shared_openssl.')
+                      ' enabled with --shared-openssl.')
     o['variables']['experimental_quic'] = 1
   else:
     o['variables']['experimental_quic'] = 'false'
