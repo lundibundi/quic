@@ -52,8 +52,7 @@ void SetALPN(SSL* ssl, const std::string& alpn) {
 std::string GetSSLOCSPResponse(SSL* ssl) {
   const unsigned char* resp;
   int len = SSL_get_tlsext_status_ocsp_resp(ssl, &resp);
-  if (len < 0) len = 0;
-  return std::string(reinterpret_cast<const char*>(resp), len);
+  return len < 0 ? "" : std::string(reinterpret_cast<const char*>(resp), len);
 }
 
 bool SetTLSSession(SSL* ssl, const unsigned char* buf, size_t length) {
@@ -140,6 +139,9 @@ int VerifyPeerCertificate(SSL* ssl, int def) {
   } else {
     const SSL_CIPHER* curr_cipher = SSL_get_current_cipher(ssl);
     const SSL_SESSION* sess = SSL_get_session(ssl);
+    // Allow no-cert for PSK authentication in TLS1.2 and lower.
+    // In TLS1.3 check that session was reused because TLS1.3 PSK
+    // looks like session resumption.
     if (SSL_CIPHER_get_auth_nid(curr_cipher) == NID_auth_psk ||
         (SSL_SESSION_get_protocol_version(sess) == TLS1_3_VERSION &&
          SSL_session_reused(ssl))) {
