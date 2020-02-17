@@ -158,32 +158,29 @@ int UseSNIContext(SSL* ssl, SecureContext* context) {
   STACK_OF(X509)* chain;
 
   int err = SSL_CTX_get0_chain_certs(ctx, &chain);
-  if (err)
-    err = SSL_use_certificate(ssl, x509);
-  if (err)
-    err = SSL_use_PrivateKey(ssl, pkey);
-  if (err && chain != nullptr)
-    err = SSL_set1_chain(ssl, chain);
+  if (err == 1) err = SSL_use_certificate(ssl, x509);
+  if (err == 1) err = SSL_use_PrivateKey(ssl, pkey);
+  if (err == 1 && chain != nullptr) err = SSL_set1_chain(ssl, chain);
   return err;
 }
 
 const char* GetClientHelloALPN(SSL* ssl) {
-    const unsigned char* buf;
-    size_t len;
-    size_t rem;
+  const unsigned char* buf;
+  size_t len;
+  size_t rem;
 
-    if (!SSL_client_hello_get0_ext(
-            ssl,
-            TLSEXT_TYPE_application_layer_protocol_negotiation,
-            &buf, &rem) || rem < 2) {
-      return nullptr;
-    }
+  if (!SSL_client_hello_get0_ext(
+          ssl,
+          TLSEXT_TYPE_application_layer_protocol_negotiation,
+          &buf,
+          &rem) ||
+      rem < 2) {
+    return nullptr;
+  }
 
-    len = (buf[0] << 8) | buf[1];
-    if (len + 2 != rem)
-      return nullptr;
-    buf += 3;
-    return reinterpret_cast<const char*>(buf);
+  len = (buf[0] << 8) | buf[1];
+  if (len + 2 != rem) return nullptr;
+  return reinterpret_cast<const char*>(buf + 3);
 }
 
 const char* GetClientHelloServerName(SSL* ssl) {
@@ -199,23 +196,19 @@ const char* GetClientHelloServerName(SSL* ssl) {
     return nullptr;
   }
 
-  len = *(buf++) << 8;
-  len += *(buf++);
+  len = (*buf << 8) | *(buf + 1);
   if (len + 2 != rem)
     return nullptr;
   rem = len;
 
-  if (rem == 0 || *buf++ != TLSEXT_NAMETYPE_host_name)
-    return nullptr;
+  if (rem == 0 || *(buf + 2) != TLSEXT_NAMETYPE_host_name) return nullptr;
   rem--;
   if (rem <= 2)
     return nullptr;
-  len = *(buf++) << 8;
-  len += *(buf++);
+  len = (*(buf + 3) << 8) | *(buf + 4);
   if (len + 2 > rem)
     return nullptr;
-  rem = len;
-  return reinterpret_cast<const char*>(buf);
+  return reinterpret_cast<const char*>(buf + 5);
 }
 
 const char* GetServerName(SSL* ssl) {
